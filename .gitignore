@@ -1,4 +1,14 @@
 ### IntelliJ IDEA ###
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/tasks.xml
+.idea/dictionaries/
+.idea/httpRequests/
+
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
@@ -27,29 +37,3 @@ bin/
 
 ### Mac OS ###
 .DS_Store
-
-# === IntelliJ IDEA ===
-.idea/
-*.iml
-
-# === Build output ===
-/out/
-/build/
-/target/
-
-# === OS-specific ===
-.DS_Store
-Thumbs.db
-
-# === Logs ===
-*.log
-
-# === Maven / Gradle / Java ===
-*.class
-*.jar
-*.war
-*.ear
-
-# === Optional: environment-specific config ===
-.env
-*.swp
