@@ -27,3 +27,29 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# === IntelliJ IDEA ===
+.idea/
+*.iml
+
+# === Build output ===
+/out/
+/build/
+/target/
+
+# === OS-specific ===
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+*.log
+
+# === Maven / Gradle / Java ===
+*.class
+*.jar
+*.war
+*.ear
+
+# === Optional: environment-specific config ===
+.env
+*.swp
