@@ -1,5 +1,6 @@
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Scanner;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -26,7 +27,19 @@ public class UserService {
         }
     }
 
-    public static boolean register(String email, String password, LocalDate birthDate) {
+    // 支援 GUI 傳入 LocalDate 的註冊方法
+    public static String register(String email, String password, LocalDate birthDate) {
+        return tryRegister(email, password, birthDate.toString());
+    }
+
+    public static String tryRegister(String email, String password, String birthText) {
+        LocalDate birthDate;
+        try {
+            birthDate = LocalDate.parse(birthText);
+        } catch (DateTimeParseException e) {
+            return "出生年月日格式錯誤，請使用 yyyy-mm-dd";
+        }
+
         String sql = "INSERT INTO users (email, password, birth_date) VALUES (?, ?, ?)";
         try (Connection conn = connect(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, email);
@@ -34,14 +47,13 @@ public class UserService {
             stmt.setDate(3, Date.valueOf(birthDate));
             stmt.executeUpdate();
             System.out.println("✅ 註冊成功");
-            return true;
+            return "success";
         } catch (SQLException e) {
             if (e.getMessage().contains("Duplicate")) {
-                System.out.println("❌ 註冊失敗：信箱已存在");
+                return "❌ 註冊失敗：信箱已存在";
             } else {
-                System.out.println("❌ 註冊失敗: " + e.getMessage());
+                return "❌ 註冊失敗: " + e.getMessage();
             }
-            return false;
         }
     }
 
@@ -64,10 +76,34 @@ public class UserService {
         }
     }
 
+    public static int getUserId(String email, String password) {
+        String sql = "SELECT uid FROM users WHERE email = ? AND password = ?";
+        try (Connection conn = connect(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            stmt.setString(2, hashPassword(password));
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("uid");
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ 取得使用者 ID 失敗: " + e.getMessage());
+        }
+        return -1; // 表示查無帳號或密碼錯誤
+    }
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-        System.out.println("請選擇操作：[1] 註冊 [2] 登入");
-        int choice = Integer.parseInt(sc.nextLine());
+        int choice = 0;
+        while (true) {
+            try {
+                System.out.println("請選擇操作：[1] 註冊 [2] 登入");
+                choice = Integer.parseInt(sc.nextLine());
+                if (choice == 1 || choice == 2) break;
+                System.out.println("❌ 無效的選擇，請重新輸入");
+            } catch (NumberFormatException e) {
+                System.out.println("❌ 請輸入數字 1 或 2");
+            }
+        }
 
         System.out.print("請輸入電子郵件：");
         String email = sc.nextLine();
@@ -76,12 +112,14 @@ public class UserService {
 
         if (choice == 1) {
             System.out.print("請輸入出生日期 (yyyy-mm-dd)：");
-            LocalDate birthDate = LocalDate.parse(sc.nextLine());
-            register(email, password, birthDate);
-        } else if (choice == 2) {
-            login(email, password);
+            String birth = sc.nextLine();
+            String result = tryRegister(email, password, birth);
+            System.out.println(result);
         } else {
-            System.out.println("❌ 無效的選擇");
+            boolean success = login(email, password);
+            if (!success) {
+                System.out.println("登入失敗");
+            }
         }
         sc.close();
     }
