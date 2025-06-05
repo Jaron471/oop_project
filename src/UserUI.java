@@ -103,8 +103,8 @@ public class UserUI extends JFrame {
     }
 
     private void loadShowtimes() {
-        SwingUtilities.invokeLater(() -> {
-            showtimeCombo.removeAllItems();
+        // 資料庫查詢屬於耗時操作，改在背景執行以免卡住畫面
+        new Thread(() -> {
             List<ShowtimeItem> list = new ArrayList<>();
             String sql = "SELECT s.id, m.title, s.show_time, t.hall_type " +
                     "FROM showtimes s " +
@@ -112,7 +112,8 @@ public class UserUI extends JFrame {
                     "JOIN theaters t ON s.theater_uid = t.uid " +
                     "ORDER BY s.show_time";
             try (Connection conn = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true", "root", "Jaron471");
+                    "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
+                    "root", "Jaron471");
                  Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
                 while (rs.next()) {
@@ -123,10 +124,18 @@ public class UserUI extends JFrame {
                     list.add(new ShowtimeItem(id, title, dt, hall));
                 }
             } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(this, "載入場次失敗："+ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+                        this,
+                        "載入場次失敗：" + ex.getMessage(),
+                        "錯誤",
+                        JOptionPane.ERROR_MESSAGE
+                ));
             }
-            list.forEach(showtimeCombo::addItem);
-        });
+            SwingUtilities.invokeLater(() -> {
+                showtimeCombo.removeAllItems();
+                list.forEach(showtimeCombo::addItem);
+            });
+        }).start();
     }
 
     private void onProceed(ActionEvent e) {
