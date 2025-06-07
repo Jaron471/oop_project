@@ -31,7 +31,6 @@ public class UserUI extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
 
-        // 左側導航按鈕
         JPanel nav = new JPanel(new GridLayout(5, 1, 10, 10));
         nav.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         JButton btnHome   = new JButton("🏠 推薦電影");
@@ -42,7 +41,6 @@ public class UserUI extends JFrame {
         nav.add(btnHome); nav.add(btnBook); nav.add(btnRecord); nav.add(btnMovie); nav.add(btnLogout);
         add(nav, BorderLayout.WEST);
 
-        // 主面板卡片
         JPanel homePanel   = createHomePanel();
         JPanel bookPanel   = createBookPanel();
         JPanel recordPanel = createRecordPanel();
@@ -53,13 +51,12 @@ public class UserUI extends JFrame {
         mainPanel.add(moviePanel,  "movie");
         add(mainPanel, BorderLayout.CENTER);
 
-        // 導航事件
         btnHome.addActionListener(e -> cardLayout.show(mainPanel, "home"));
         btnBook.addActionListener(e -> cardLayout.show(mainPanel, "book"));
         btnRecord.addActionListener(e -> cardLayout.show(mainPanel, "record"));
         btnMovie.addActionListener(e -> cardLayout.show(mainPanel, "movie"));
         btnLogout.addActionListener(e -> {
-            new LoginFrame().setVisible(true); // 假定 LoginFrame 在同 package
+            new LoginFrame().setVisible(true);
             dispose();
         });
     }
@@ -90,7 +87,15 @@ public class UserUI extends JFrame {
         JPanel p = new JPanel(new BorderLayout(10,10));
         JButton btn = new JButton("查詢訂票紀錄");
         btn.addActionListener(this::onQueryRecords);
-        p.add(btn, BorderLayout.NORTH);
+
+        JButton cancelBtn = new JButton("取消訂票");
+        cancelBtn.addActionListener(this::onCancelBooking);
+
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        top.add(btn);
+        top.add(cancelBtn);
+
+        p.add(top, BorderLayout.NORTH);
         return p;
     }
 
@@ -147,6 +152,40 @@ public class UserUI extends JFrame {
             JOptionPane.showMessageDialog(this, new JScrollPane(ta), "訂票紀錄", JOptionPane.INFORMATION_MESSAGE);
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(this, "查詢紀錄失敗："+ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void onCancelBooking(ActionEvent e) {
+        try {
+            List<QueryService.BookingRecord> recs = QueryService.getBookingRecordsByUser(userId);
+            if (recs.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "目前沒有可取消的訂票。", "提示", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            String[] options = recs.stream()
+                    .map(r -> "訂單 #" + r.bookingId + " | " + r.movieTitle + " | " + r.showTime)
+                    .toArray(String[]::new);
+
+            String choice = (String) JOptionPane.showInputDialog(this, "請選擇要取消的訂單：", "取消訂票",
+                    JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+
+            if (choice != null) {
+                int idx = java.util.Arrays.asList(options).indexOf(choice);
+                int bookingId = recs.get(idx).bookingId;
+
+                int ok = JOptionPane.showConfirmDialog(this, "確定要取消訂單 #" + bookingId + " 嗎？", "確認", JOptionPane.YES_NO_OPTION);
+                if (ok == JOptionPane.YES_OPTION) {
+                    try {
+                        CancelBooking.cancelBooking(bookingId);
+                        JOptionPane.showMessageDialog(this, "✅ 已取消訂票 #" + bookingId);
+                    } catch (CancelBooking.CancelException ex) {
+                        JOptionPane.showMessageDialog(this, "❌ 退票失敗：" + ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "取消訂票時發生錯誤：" + ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
         }
     }
 

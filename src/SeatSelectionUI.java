@@ -8,7 +8,6 @@ import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.IntStream;
 
 /**
  * 座位選擇介面，支援大廳/小廳固定結構及自訂排限制
@@ -49,9 +48,6 @@ public class SeatSelectionUI extends JFrame {
         setLocationRelativeTo(null);
     }
 
-    /**
-     * 根據排名回傳對應座位號碼陣列，0 表示空白
-     */
     private int[] getRowLayout(String row) {
         int[] arr = new int[39];
         for (int i = 1; i <= 39; i++) {
@@ -64,7 +60,7 @@ public class SeatSelectionUI extends JFrame {
                     show = (i >= 5 && i <= 11) || (i >= 14 && i <= 25) || (i >= 28 && i <= 34);
                     break;
                 case "L":
-                    show = true; // L 排完整 1-39
+                    show = true;
                     break;
                 case "M":
                     show = (i >= 1 && i <= 8) || (i >= 31 && i <= 38);
@@ -78,15 +74,12 @@ public class SeatSelectionUI extends JFrame {
         return arr;
     }
 
-    /**
-     * 讀取 DB 與渲染座位格子
-     */
     private void renderGrid() {
-        String[] rows = "大廳".equals(showtime.getHallType()) ? BIG_ROWS : SMALL_ROWS;
-        int cols = rows.length == BIG_ROWS.length ? 39 : 18;
+        boolean isBigHall = "大廳".equals(showtime.getHallType());
+        String[] rows = isBigHall ? BIG_ROWS : SMALL_ROWS;
+        int cols = isBigHall ? 39 : 16;
         JPanel grid = new JPanel(new GridLayout(rows.length, cols, 3, 3));
 
-        // 讀取座位 ID 映射
         Map<String,Integer> idMap = new HashMap<>();
         String sql1 = "SELECT id, seat_row, seat_col FROM seats WHERE theater_uid=(SELECT theater_uid FROM showtimes WHERE id=?)";
         try (Connection conn = DriverManager.getConnection(
@@ -102,7 +95,6 @@ public class SeatSelectionUI extends JFrame {
             JOptionPane.showMessageDialog(this, "載入座位失敗："+ex.getMessage(), "錯誤", JOptionPane.ERROR_MESSAGE);
         }
 
-        // 讀取已訂訂
         Set<Integer> booked = new HashSet<>();
         String sql2 = "SELECT bs.seat_id FROM booking_seats bs JOIN bookings b ON bs.booking_id=b.id WHERE b.showtime_id=?";
         try (Connection conn = DriverManager.getConnection(
@@ -116,31 +108,19 @@ public class SeatSelectionUI extends JFrame {
             ex.printStackTrace();
         }
 
-        // 建按鈕格
         for (String row : rows) {
-            int[] layout = getRowLayout(row);
-            for (int num : layout) {
-                if (num == 0) {
-                    grid.add(new JLabel());
-                } else {
-                    JButton btn = new JButton(row + num);
-                    Integer sid = idMap.get(row + "_" + num);
-                    if (sid == null) {
-                        btn.setEnabled(false);
-                    } else {
-                        btn.setEnabled(!booked.contains(sid));
-                        btn.addActionListener((ActionEvent e) -> {
-                            if (selectedSeats.contains(sid)) {
-                                selectedSeats.remove(sid);
-                                btn.setBackground(null);
-                            } else {
-                                selectedSeats.add(sid);
-                                btn.setBackground(Color.CYAN);
-                            }
-                        });
-                        seatButtons.put(sid, btn);
+            if (isBigHall) {
+                int[] layout = getRowLayout(row);
+                for (int num : layout) {
+                    if (num == 0) {
+                        grid.add(new JLabel());
+                        continue;
                     }
-                    grid.add(btn);
+                    renderSeatButton(grid, row, num, idMap, booked);
+                }
+            } else {
+                for (int num = 1; num <= 16; num++) {
+                    renderSeatButton(grid, row, num, idMap, booked);
                 }
             }
         }
@@ -148,6 +128,28 @@ public class SeatSelectionUI extends JFrame {
         getContentPane().remove(1);
         add(new JScrollPane(grid), BorderLayout.CENTER);
         revalidate(); repaint();
+    }
+
+    private void renderSeatButton(JPanel grid, String row, int num, Map<String,Integer> idMap, Set<Integer> booked) {
+        String key = row + "_" + num;
+        JButton btn = new JButton(row + num);
+        Integer sid = idMap.get(key);
+        if (sid == null) {
+            btn.setEnabled(false);
+        } else {
+            btn.setEnabled(!booked.contains(sid));
+            btn.addActionListener((ActionEvent e) -> {
+                if (selectedSeats.contains(sid)) {
+                    selectedSeats.remove(sid);
+                    btn.setBackground(null);
+                } else {
+                    selectedSeats.add(sid);
+                    btn.setBackground(Color.CYAN);
+                }
+            });
+            seatButtons.put(sid, btn);
+        }
+        grid.add(btn);
     }
 
     private void onConfirm(ActionEvent e) {
