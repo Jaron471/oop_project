@@ -7,13 +7,13 @@ import java.util.Optional;
 /**
  * 使用者登入介面
  */
-public class LoginFrame extends JFrame {
+public class LoginFrameUI extends JFrame {
     private final JTextField emailField = new JTextField(20);
     private final JPasswordField passwordField = new JPasswordField(20);
     private final JButton loginButton = new JButton("登入");
     private final JButton registerButton = new JButton("註冊");
 
-    public LoginFrame() {
+    public LoginFrameUI() {
         super("電影訂票系統 - 登入");
         initUI();
     }
@@ -60,7 +60,7 @@ public class LoginFrame extends JFrame {
                 if (uidOpt.isPresent()) {
                     int uid = uidOpt.get();
                     JOptionPane.showMessageDialog(
-                            LoginFrame.this,
+                            LoginFrameUI.this,
                             "✅ 登入成功！",
                             "訊息",
                             JOptionPane.INFORMATION_MESSAGE
@@ -72,7 +72,7 @@ public class LoginFrame extends JFrame {
                     dispose();
                 } else {
                     JOptionPane.showMessageDialog(
-                            LoginFrame.this,
+                            LoginFrameUI.this,
                             "❌ 登入失敗：帳號或密碼錯誤",
                             "錯誤",
                             JOptionPane.ERROR_MESSAGE
@@ -86,7 +86,7 @@ public class LoginFrame extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 // 開啟註冊視窗（需自行實作 RegisterDialog）
                 SwingUtilities.invokeLater(() -> {
-                    new RegisterDialog(LoginFrame.this).setVisible(true);
+                    new RegisterDialog(LoginFrameUI.this).setVisible(true);
                 });
             }
         });
@@ -98,7 +98,7 @@ public class LoginFrame extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            LoginFrame frame = new LoginFrame();
+            LoginFrameUI frame = new LoginFrameUI();
             frame.setVisible(true);
         });
     }

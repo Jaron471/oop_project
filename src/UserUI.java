@@ -3,7 +3,6 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,9 +55,30 @@ public class UserUI extends JFrame {
         btnRecord.addActionListener(e -> cardLayout.show(mainPanel, "record"));
         btnMovie.addActionListener(e -> cardLayout.show(mainPanel, "movie"));
         btnLogout.addActionListener(e -> {
-            new LoginFrame().setVisible(true);
+            new LoginFrameUI().setVisible(true);
             dispose();
         });
+    }
+
+    private String getRandomMovieImagePath() {
+        List<String> paths = new ArrayList<>();
+        String sql = "SELECT image_path FROM movies WHERE image_path IS NOT NULL AND image_path != ''";
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
+                "root", "Jaron471");
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                paths.add(rs.getString("image_path"));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        if (!paths.isEmpty()) {
+            return paths.get((int)(Math.random() * paths.size()));
+        }
+        return null;
     }
 
     private JPanel createHomePanel() {
@@ -66,7 +86,16 @@ public class UserUI extends JFrame {
         JLabel lbl = new JLabel("🎬 熱門推薦電影：", SwingConstants.CENTER);
         lbl.setFont(new Font("Microsoft JhengHei", Font.BOLD, 18));
         p.add(lbl, BorderLayout.NORTH);
-        p.add(new JLabel(new ImageIcon("resources/sample_movie.jpg"), SwingConstants.CENTER), BorderLayout.CENTER);
+
+        String imagePath = getRandomMovieImagePath();
+        if (imagePath != null) {
+            ImageIcon icon = new ImageIcon(imagePath);
+            JLabel imgLabel = new JLabel(icon, SwingConstants.CENTER);
+            p.add(imgLabel, BorderLayout.CENTER);
+        } else {
+            p.add(new JLabel("尚未提供推薦圖片", SwingConstants.CENTER), BorderLayout.CENTER);
+        }
+
         return p;
     }
 
