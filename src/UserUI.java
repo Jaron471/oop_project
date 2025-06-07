@@ -1,3 +1,7 @@
+import model.ShowtimeItem;
+import service.CancelBooking;
+import service.QueryService;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -5,6 +9,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import database.DatabaseConnector;
 
 /**
  * 會員主畫面：首頁、訂票、訂票紀錄、電影查詢、登出
@@ -63,9 +68,7 @@ public class UserUI extends JFrame {
     private String getRandomMovieImagePath() {
         List<String> paths = new ArrayList<>();
         String sql = "SELECT image_path FROM movies WHERE image_path IS NOT NULL AND image_path != ''";
-        try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
-                "root", "Jaron471");
+        try (Connection conn=DatabaseConnector.connect();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
@@ -145,8 +148,7 @@ public class UserUI extends JFrame {
                     "JOIN movies m   ON s.movie_uid  = m.uid " +
                     "JOIN theaters t ON s.theater_uid = t.uid " +
                     "ORDER BY s.show_time";
-            try (Connection conn = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true", "root", "Jaron471");
+            try (Connection conn=DatabaseConnector.connect();
                  Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
                 while (rs.next()) {

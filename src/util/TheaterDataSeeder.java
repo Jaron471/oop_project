@@ -1,19 +1,17 @@
 import java.sql.*;
 import java.util.*;
+import database.DatabaseConnector;
 
 /**
  * 預設影廳種別資料：建立 6 個影廳（3 大廳、3 小廳），並自動產生對應座位
  * 大廳佈局依照指定結構：每排使用不同號碼區塊
  */
 public class TheaterDataSeeder {
-    private static final String URL  = "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC";
-    private static final String USER = "root";
-    private static final String PWD  = "Jaron471";
-
     public static void main(String[] args) {
-        try (Connection conn = DriverManager.getConnection(URL, USER, PWD);
+        try (Connection conn = database.DatabaseConnector.connect();
              Statement stmt = conn.createStatement()) {
             conn.setAutoCommit(false);
+
             // 清空舊影廳與座位
             stmt.execute("SET FOREIGN_KEY_CHECKS=0");
             stmt.executeUpdate("TRUNCATE TABLE booking_seats");

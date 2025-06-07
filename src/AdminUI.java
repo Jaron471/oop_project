@@ -1,13 +1,14 @@
+import service.AdminService;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.event.*;
-import java.io.File;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import database.DatabaseConnector;
 
 /**
  * 營運人員管理介面
@@ -324,8 +325,7 @@ public class AdminUI extends JFrame {
         cbMovieTheaters.removeAllItems();
         cbSTTheaters.removeAllItems();
         String sql="SELECT uid,hall_type FROM theaters";
-        try (Connection conn=DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC","root","Jaron471");
+        try (Connection conn=DatabaseConnector.connect();
              Statement st=conn.createStatement();
              ResultSet rs=st.executeQuery(sql)) {
             while(rs.next()){
@@ -344,8 +344,7 @@ public class AdminUI extends JFrame {
         cbMoviesDelete.removeAllItems();
         loadMoviesInto(cbSTMovies);
         String sql="SELECT uid,title FROM movies";
-        try (Connection conn=DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC","root","Jaron471");
+        try (Connection conn=DatabaseConnector.connect();
              Statement st=conn.createStatement();
              ResultSet rs=st.executeQuery(sql)) {
             while(rs.next()){
@@ -361,8 +360,7 @@ public class AdminUI extends JFrame {
     private void loadMoviesInto(JComboBox<MovieItem> cb) {
         cb.removeAllItems();
         String sql="SELECT uid,title FROM movies";
-        try (Connection conn=DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC","root","Jaron471");
+        try (Connection conn=DatabaseConnector.connect();
              Statement st=conn.createStatement();
              ResultSet rs=st.executeQuery(sql)) {
             while(rs.next()){

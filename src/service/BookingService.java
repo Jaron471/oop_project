@@ -1,9 +1,12 @@
+package service;
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.List;
 import java.util.Optional;
+import database.DatabaseConnector;
 
 /**
  * 處理訂票邏輯的服務層
@@ -17,10 +20,7 @@ public class BookingService {
     }
 
     private static Connection connect() throws SQLException {
-        return DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
-                "root", "Jaron471"
-        );
+        return DatabaseConnector.connect();
     }
 
     private static int getUserAge(int userId, Connection conn) throws SQLException {

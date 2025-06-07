@@ -1,3 +1,6 @@
+import model.ShowtimeItem;
+import service.BookingService;
+
 import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -8,6 +11,7 @@ import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.*;
+import database.DatabaseConnector;
 
 /**
  * 座位選擇介面，支援大廳/小廳固定結構及自訂排限制
@@ -82,8 +86,7 @@ public class SeatSelectionUI extends JFrame {
 
         Map<String,Integer> idMap = new HashMap<>();
         String sql1 = "SELECT id, seat_row, seat_col FROM seats WHERE theater_uid=(SELECT theater_uid FROM showtimes WHERE id=?)";
-        try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC","root","Jaron471");
+        try (Connection conn=DatabaseConnector.connect();
              PreparedStatement ps = conn.prepareStatement(sql1)) {
             ps.setInt(1, showtime.getId());
             try (ResultSet rs = ps.executeQuery()) {
@@ -97,8 +100,7 @@ public class SeatSelectionUI extends JFrame {
 
         Set<Integer> booked = new HashSet<>();
         String sql2 = "SELECT bs.seat_id FROM booking_seats bs JOIN bookings b ON bs.booking_id=b.id WHERE b.showtime_id=?";
-        try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC","root","Jaron471");
+        try (Connection conn=DatabaseConnector.connect();
              PreparedStatement ps2 = conn.prepareStatement(sql2)) {
             ps2.setInt(1, showtime.getId());
             try (ResultSet rs2 = ps2.executeQuery()) {

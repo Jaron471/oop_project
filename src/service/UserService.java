@@ -1,3 +1,5 @@
+package service;
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -5,14 +7,12 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import database.DatabaseConnector;
 
 public class UserService {
 
     private static Connection connect() throws SQLException {
-        return DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
-                "root", "Jaron471"
-        );
+        return DatabaseConnector.connect();
     }
 
     private static String hashPassword(String password) {

@@ -1,6 +1,9 @@
+package service;
+
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import database.DatabaseConnector;
 
 /**
  * 處理退票邏輯的服務層
@@ -13,10 +16,7 @@ public class CancelBooking {
     }
 
     private static Connection connect() throws SQLException {
-        return DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
-                "root", "Jaron471"
-        );
+        return DatabaseConnector.connect();
     }
 
     /**

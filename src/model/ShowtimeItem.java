@@ -1,5 +1,8 @@
+package model;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import database.DatabaseConnector;
 
 /**
  * DTO：封裝電影場次資訊，用於在下拉選單中顯示與傳遞

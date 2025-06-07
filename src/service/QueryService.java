@@ -1,6 +1,9 @@
+package service;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import database.DatabaseConnector;
 
 /**
  * 查詢服務，提供會員訂票紀錄與在架電影場次查詢
@@ -8,10 +11,7 @@ import java.util.List;
 public class QueryService {
 
     private static Connection connect() throws SQLException {
-        return DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/movie_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
-                "root", "Jaron471"
-        );
+        return DatabaseConnector.connect();
     }
 
     /**
