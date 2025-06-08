@@ -1,16 +1,30 @@
 package database;
 
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
 
 public class CreateMySQL {
 
     public static void main(String[] args) {
-        String url  = "jdbc:mysql://localhost:3306/?useSSL=false&serverTimezone=UTC";
-        String user = "root";
-        String pwd  = "Jaron471";
+        Properties props = new Properties();
+
+        try (InputStream input = CreateMySQL.class.getClassLoader().getResourceAsStream("db.properties")) {
+            if (input == null) {
+                throw new RuntimeException("❌ 找不到 db.properties 設定檔！");
+            }
+            props.load(input);
+        } catch (Exception e) {
+            System.err.println("❌ 載入設定檔失敗：" + e.getMessage());
+            return;
+        }
+
+        String url  = props.getProperty("db.url");
+        String user = props.getProperty("db.username");
+        String pwd  = props.getProperty("db.password");
 
         try (Connection conn = DriverManager.getConnection(url, user, pwd);
              Statement stmt = conn.createStatement()) {
@@ -137,7 +151,7 @@ public class CreateMySQL {
                 ) ENGINE=InnoDB;
             """);
 
-            System.out.println("✅ 已成功建立 movie_booking 資料庫及所有資料表（含海報 image_path 欄位）！");
+            System.out.println("✅ 已成功建立 movie_booking 資料庫及所有資料表！");
         } catch (SQLException e) {
             System.err.println("❌ 建立資料庫失敗：" + e.getMessage());
         }

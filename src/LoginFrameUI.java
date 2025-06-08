@@ -1,5 +1,4 @@
 import service.UserService;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -58,7 +57,24 @@ public class LoginFrameUI extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String email = emailField.getText().trim();
-                String pwd   = new String(passwordField.getPassword());
+                String pwd = new String(passwordField.getPassword());
+
+                // 管理員登入條件
+                if (email.equals("admin") && pwd.equals("admin")) {
+                    JOptionPane.showMessageDialog(
+                            LoginFrameUI.this,
+                            "👑 管理員登入成功！",
+                            "訊息",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                    SwingUtilities.invokeLater(() -> {
+                        new AdminUI().setVisible(true);
+                    });
+                    dispose();
+                    return;
+                }
+
+                // 一般使用者登入
                 Optional<Integer> uidOpt = UserService.login(email, pwd);
                 if (uidOpt.isPresent()) {
                     int uid = uidOpt.get();
@@ -68,7 +84,6 @@ public class LoginFrameUI extends JFrame {
                             "訊息",
                             JOptionPane.INFORMATION_MESSAGE
                     );
-                    // 打開主畫面並關閉登入
                     SwingUtilities.invokeLater(() -> {
                         new UserUI(uid, email).setVisible(true);
                     });
@@ -100,6 +115,12 @@ public class LoginFrameUI extends JFrame {
     }
 
     public static void main(String[] args) {
+        // 啟動登入介面
+        SwingUtilities.invokeLater(() -> {
+            LoginFrameUI frame = new LoginFrameUI();
+            frame.setVisible(true);
+        });
+
         SwingUtilities.invokeLater(() -> {
             LoginFrameUI frame = new LoginFrameUI();
             frame.setVisible(true);

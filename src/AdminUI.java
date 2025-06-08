@@ -51,19 +51,32 @@ public class AdminUI extends JFrame {
     private JTextField tfUpdateSTTime;
     private JButton btnUpdateShowtime;
 
+
     public AdminUI() {
         super("營運人員後台");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
 
+        // 功能分頁
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("訂票狀態", createBookingTab());
         tabs.addTab("電影管理", createMovieTab());
         tabs.addTab("場次管理", createShowtimeTab());
-
         add(tabs);
+
+        // 🔽 登出按鈕區域（放在最上方）
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton logoutButton = new JButton("登出");
+        logoutButton.addActionListener(e -> {
+            dispose(); // 關閉 AdminUI
+            SwingUtilities.invokeLater(() -> new LoginFrameUI().setVisible(true)); // 回到登入畫面
+        });
+        topBar.add(logoutButton);
+        add(topBar, BorderLayout.NORTH); // 放在最上方區域
     }
+
+
 
     private JPanel createBookingTab() {
         JPanel p = new JPanel(new BorderLayout(10,10));
