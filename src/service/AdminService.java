@@ -111,9 +111,7 @@ public class AdminService {
      * 強制退票：更新訂單狀態為 CANCELLED，並記錄退票時間
      */
     public static boolean cancelBookingAdmin(int bookingId) throws SQLException {
-        String sql = "UPDATE bookings "
-                + "SET status='CANCELLED', cancel_time=CURRENT_TIMESTAMP "
-                + "WHERE id=?";
+        String sql = "DELETE FROM bookings WHERE id=?";
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, bookingId);
@@ -167,35 +165,62 @@ public class AdminService {
                                      LocalDateTime time,
                                      BigDecimal price)
             throws SQLException, ConflictException {
-        String chk = "SELECT 1 FROM showtimes WHERE theater_uid=? AND show_time=?";
-        String ins = "INSERT INTO showtimes(movie_uid,theater_uid,show_time,price) VALUES(?,?,?,?)";
+        String getDuration = "SELECT duration FROM movies WHERE uid=?";
+        String getOthers = """
+        SELECT s.show_time, m.duration FROM showtimes s
+        JOIN movies m ON s.movie_uid = m.uid
+        WHERE s.theater_uid = ?
+    """;
+        String insert = "INSERT INTO showtimes(movie_uid,theater_uid,show_time,price) VALUES(?,?,?,?)";
+
         try (Connection conn = connect()) {
             conn.setAutoCommit(false);
             try {
-                // 衝突檢查
-                try (PreparedStatement ps = conn.prepareStatement(chk)) {
-                    ps.setInt(1, theaterId);
-                    ps.setTimestamp(2, Timestamp.valueOf(time));
+                int duration;
+                // 取得此電影片長
+                try (PreparedStatement ps = conn.prepareStatement(getDuration)) {
+                    ps.setInt(1, movieId);
                     try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next())
-                            throw new ConflictException("場次時間衝突");
+                        if (!rs.next()) throw new SQLException("找不到電影");
+                        duration = rs.getInt("duration");
                     }
                 }
-                // 寫入
+
+                LocalDateTime endTime = time.plusMinutes(duration);
+
+                // 檢查此廳其他場次是否有時間重疊
+                try (PreparedStatement ps = conn.prepareStatement(getOthers)) {
+                    ps.setInt(1, theaterId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            LocalDateTime otherStart = rs.getTimestamp("show_time").toLocalDateTime();
+                            LocalDateTime otherEnd = otherStart.plusMinutes(rs.getInt("duration"));
+
+                            boolean overlap = time.isBefore(otherEnd) && otherStart.isBefore(endTime);
+                            if (overlap)
+                                throw new ConflictException("場次時間與其他場次重疊");
+                        }
+                    }
+                }
+
+                // 寫入場次
                 int newId;
-                try (PreparedStatement ps = conn.prepareStatement(ins, Statement.RETURN_GENERATED_KEYS)) {
+                try (PreparedStatement ps = conn.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
                     ps.setInt(1, movieId);
                     ps.setInt(2, theaterId);
                     ps.setTimestamp(3, Timestamp.valueOf(time));
                     ps.setBigDecimal(4, price);
                     ps.executeUpdate();
+
                     try (ResultSet rs = ps.getGeneratedKeys()) {
                         if (rs.next()) newId = rs.getInt(1);
                         else throw new SQLException("取得新場次 ID 失敗");
                     }
                 }
+
                 conn.commit();
                 return newId;
+
             } catch (SQLException | ConflictException e) {
                 conn.rollback();
                 throw e;
@@ -207,11 +232,33 @@ public class AdminService {
      * 刪除場次
      */
     public static boolean deleteShowtime(int showtimeId) throws SQLException {
-        String sql = "DELETE FROM showtimes WHERE id=?";
-        try (Connection conn = connect();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, showtimeId);
-            return ps.executeUpdate() > 0;
+        String delBS = "DELETE bs FROM booking_seats bs JOIN bookings b ON bs.booking_id = b.id WHERE b.showtime_id=?";
+        String delB  = "DELETE FROM bookings WHERE showtime_id=?";
+        String delST = "DELETE FROM showtimes WHERE id=?";
+        try (Connection conn = connect()) {
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps1 = conn.prepareStatement(delBS);
+                     PreparedStatement ps2 = conn.prepareStatement(delB)) {
+                    ps1.setInt(1, showtimeId);
+                    ps1.executeUpdate();
+                    ps2.setInt(1, showtimeId);
+                    ps2.executeUpdate();
+                }
+
+                int affected;
+                try (PreparedStatement ps = conn.prepareStatement(delST)) {
+                    ps.setInt(1, showtimeId);
+                    affected = ps.executeUpdate();
+                }
+
+                conn.commit();
+                return affected > 0;
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
         }
     }
 
@@ -274,36 +321,65 @@ public class AdminService {
      */
     public static void updateShowtimeTime(int showtimeId, LocalDateTime newTime)
             throws SQLException, ConflictException {
-        String gt  = "SELECT theater_uid FROM showtimes WHERE id=?";
-        String chk = "SELECT 1 FROM showtimes WHERE theater_uid=? AND show_time=? AND id<>?";
-        String up  = "UPDATE showtimes SET show_time=? WHERE id=?";
+        String getTheaterAndMovie = "SELECT theater_uid, movie_uid FROM showtimes WHERE id=?";
+        String getDuration = "SELECT duration FROM movies WHERE uid=?";
+        String getAllOtherShowtimes = """
+        SELECT s.show_time, m.duration FROM showtimes s
+        JOIN movies m ON s.movie_uid = m.uid
+        WHERE s.theater_uid = ? AND s.id <> ?
+    """;
+        String updateTime = "UPDATE showtimes SET show_time=? WHERE id=?";
+
         try (Connection conn = connect()) {
             conn.setAutoCommit(false);
             try {
-                int tid;
-                // 取得 theater
-                try (PreparedStatement ps = conn.prepareStatement(gt)) {
+                int theaterId, movieId, newDuration;
+
+                // 取得本場場次資訊（廳與電影 ID）
+                try (PreparedStatement ps = conn.prepareStatement(getTheaterAndMovie)) {
                     ps.setInt(1, showtimeId);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (!rs.next()) throw new SQLException("找不到場次");
-                        tid = rs.getInt(1);
+                        theaterId = rs.getInt("theater_uid");
+                        movieId = rs.getInt("movie_uid");
                     }
                 }
-                // 檢查衝突
-                try (PreparedStatement ps = conn.prepareStatement(chk)) {
-                    ps.setInt(1, tid);
-                    ps.setTimestamp(2, Timestamp.valueOf(newTime));
-                    ps.setInt(3, showtimeId);
+
+                // 查該電影的片長
+                try (PreparedStatement ps = conn.prepareStatement(getDuration)) {
+                    ps.setInt(1, movieId);
                     try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) throw new ConflictException("場次時間衝突");
+                        if (!rs.next()) throw new SQLException("找不到電影");
+                        newDuration = rs.getInt("duration");
                     }
                 }
-                // 更新
-                try (PreparedStatement ps = conn.prepareStatement(up)) {
+
+                LocalDateTime newEndTime = newTime.plusMinutes(newDuration);
+
+                // 查同一廳的其他場次，檢查是否有重疊
+                try (PreparedStatement ps = conn.prepareStatement(getAllOtherShowtimes)) {
+                    ps.setInt(1, theaterId);
+                    ps.setInt(2, showtimeId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            LocalDateTime oldStart = rs.getTimestamp("show_time").toLocalDateTime();
+                            LocalDateTime oldEnd = oldStart.plusMinutes(rs.getInt("duration"));
+
+                            boolean overlap = newTime.isBefore(oldEnd) && oldStart.isBefore(newEndTime);
+                            if (overlap) {
+                                throw new ConflictException("場次時間與其他場次重疊");
+                            }
+                        }
+                    }
+                }
+
+                // 若沒衝突則更新
+                try (PreparedStatement ps = conn.prepareStatement(updateTime)) {
                     ps.setTimestamp(1, Timestamp.valueOf(newTime));
                     ps.setInt(2, showtimeId);
                     ps.executeUpdate();
                 }
+
                 conn.commit();
             } catch (SQLException | ConflictException e) {
                 conn.rollback();

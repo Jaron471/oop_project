@@ -76,7 +76,24 @@ public class AdminUI extends JFrame {
         add(topBar, BorderLayout.NORTH); // 放在最上方區域
     }
 
+    private void reloadBookingList(JComboBox<BookingItem> cbBookingList) {
+        cbBookingList.removeAllItems();
+        var si = (AdminService.ShowtimeInfo) cbBookingShowtimes.getSelectedItem();
+        if (si != null) {
+            try {
+                List<AdminService.BookingRecord> recs = AdminService.getShowtimeBookings(si.id);
+                for (var r : recs) {
+                    cbBookingList.addItem(new BookingItem(r.bookingId, r.userEmail, r.seatNumber));
+                }
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "無法載入訂單：" + ex.getMessage(),
+                        "錯誤", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
 
+
+    // AdminUI.java（修改後的取消訂票功能）
 
     private JPanel createBookingTab() {
         JPanel p = new JPanel(new BorderLayout(10,10));
@@ -92,23 +109,50 @@ public class AdminUI extends JFrame {
         taBookings.setEditable(false);
         p.add(new JScrollPane(taBookings), BorderLayout.CENTER);
 
-        // 下方：取消訂單
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT,10,10));
-        bottom.add(new JLabel("訂單 ID:"));
-        tfCancelBookingId = new JTextField(5);
-        bottom.add(tfCancelBookingId);
+        // 下方：取消訂單（改為下拉選單）
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        bottom.add(new JLabel("選擇要取消的訂單："));
+
+        // 下拉選單顯示可取消的訂單
+        JComboBox<BookingItem> cbBookingList = new JComboBox<>();
+        bottom.add(cbBookingList);
+
+        // 當場次變動時，自動更新訂單下拉選單與文字區
+        cbBookingShowtimes.addActionListener(e -> {
+            refreshBookings(); // 更新文字區
+            cbBookingList.removeAllItems();
+            var si = (AdminService.ShowtimeInfo) cbBookingShowtimes.getSelectedItem();
+            if (si != null) {
+                try {
+                    List<AdminService.BookingRecord> recs = AdminService.getShowtimeBookings(si.id);
+                    for (var r : recs) {
+                        cbBookingList.addItem(new BookingItem(r.bookingId, r.userEmail, r.seatNumber));
+                    }
+                } catch (SQLException ex) {
+                    JOptionPane.showMessageDialog(this, "無法載入訂單：" + ex.getMessage(),
+                            "錯誤", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        // 取消按鈕邏輯
         btnCancelBooking = new JButton("取消訂票");
         btnCancelBooking.addActionListener(e -> {
+            BookingItem item = (BookingItem) cbBookingList.getSelectedItem();
+            if (item == null) {
+                JOptionPane.showMessageDialog(this, "請選擇要取消的訂單", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             try {
-                int bid = Integer.parseInt(tfCancelBookingId.getText().trim());
-                boolean ok = AdminService.cancelBookingAdmin(bid);
+                boolean ok = AdminService.cancelBookingAdmin(item.id);
                 JOptionPane.showMessageDialog(this,
                         ok ? "✅ 訂單已取消" : "❌ 找不到訂單",
                         "結果", ok ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
                 refreshBookings();
+                reloadBookingList(cbBookingList); // 👈 新增這行
+                cbBookingShowtimes.setSelectedItem(cbBookingShowtimes.getSelectedItem()); // 觸發重新載入
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this,
-                        "❌ 取消失敗: " + ex.getMessage(),
+                JOptionPane.showMessageDialog(this, "❌ 取消失敗: " + ex.getMessage(),
                         "錯誤", JOptionPane.ERROR_MESSAGE);
             }
         });
@@ -116,6 +160,24 @@ public class AdminUI extends JFrame {
         p.add(bottom, BorderLayout.SOUTH);
 
         return p;
+    }
+
+    // 補充 DTO 類別（放在 AdminUI 最底部）
+    private static class BookingItem {
+        final int id;
+        final String userEmail;
+        final String seat;
+
+        BookingItem(int id, String email, String seat) {
+            this.id = id;
+            this.userEmail = email;
+            this.seat = seat;
+        }
+
+        @Override
+        public String toString() {
+            return "訂單 " + id + "｜會員: " + userEmail + "｜座位: " + seat;
+        }
     }
 
     private JPanel createMovieTab() {
